@@ -1,6 +1,9 @@
 <html>
     <head>
         <title>TODO supply a title</title>
+        <script src="utils.js"></script>
+        <script src="bytearray.js"></script>
+        <script src="color.js"></script>
         <script src="mazegen.js"></script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +11,10 @@
     </head>
     <body>
         <script>
-            var gen = new Generator();
-            var maze = gen.generateDFS(40, 10);
+            var gen = new DFSGenerator();
+            var cr = new ColorRandomizer(100);
+            cr.randomize(new Color(1, 2, 3));
+            var maze = gen.generate(40, 10);
             maze.printToConsole();
         </script>
         <div>TODO write content</div>

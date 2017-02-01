@@ -1,17 +1,3 @@
-function ByteArray(w, h) {
-    this.checkRange = (x, y) => !(x < 0 || x >= w || y < 0 || y >= h);
-    this.array = new Uint8Array(w * h);
-    this.get = (x, y) => this.array[y * w + x];
-    this.set = (x, y, b) => this.array[y * w + x] = b;
-    this.addMask = (x, y, mask) => this.array[y * w + x] |= mask;
-    this.testMask = (x, y, mask) => (this.array[y * w + x] & mask) !== 0;
-}
-
-
-function makeReadOnly(obj, prop) {
-    Object.defineProperty(obj, prop, {writable: false, configurable: false});
-}
-
 function Direction(dx, dy, mask) {
     this.dx = dx;
     this.dy = dy;
@@ -37,53 +23,75 @@ Object.freeze(RIGHT);
 var directions = [UP, RIGHT, DOWN, LEFT];
 Object.freeze(directions);
 
-
 const VISITED_MASK = 1 << 5;
 
 function Maze(w, h) {
-    ByteArray.call(this, w, h);
+    this.ar = new ByteArray(w, h);
     function assertRange(x, y) {
-        if (!this.checkRange(x, y))
+        if (!this.ar.checkRange(x, y))
             throw "Invalid range " + x + " " + y + ".";
     }
+    
     assertRange = assertRange.bind(this);
 
     this.makePass = (x, y, direction) => {
-        assertRange(x, y);
         var toX = x + direction.dx;
         var toY = y + direction.dy;
+        assertRange(x, y);
         assertRange(toX, toY);
-        this.addMask(x, y, direction.mask);
-        this.addMask(toX, toY, direction.opposite.mask);
+        this.ar.addMask(x, y, direction.mask);
+        this.ar.addMask(toX, toY, direction.opposite.mask);
     };
-
+    
+    this.isVisited = (x, y) => this.ar.testMask(x, y, VISITED_MASK);
+    this.visit = (x, y) => this.ar.addMask(x, y, VISITED_MASK);
+    this.isInside = (x, y) => this.ar.checkRange(x, y);
+    
     this.printToConsole = () => {
-        var res = [];
-        for (let i = 0; i < w; i++)
-            res.push("##");
-        res.push("#\n");
-        for (let j = 0; j < h; j++) {
-            res.push("#");
-            for (let i = 0; i < w; i++) {
-                res.push(" ");
-                if (this.testMask(i, j, RIGHT.mask))
-                    res.push(" ");
-                else
-                    res.push("#");
-            }
-            res.push("\n");
-            res.push("#");
-            for (let i = 0; i < w; i++) {
-                if (this.testMask(i, j, DOWN.mask))
-                    res.push(" ");
-                else
-                    res.push("#");
-                res.push("#");
-            }
-
-            res.push("\n");
+        let pw = this.toPassageWallRepresentation();
+        let w = pw.getWidth(), h = pw.getHeight();
+        let str = [];
+         for (let j = 0; j < h; j++) {
+            for (let i = 0; i < w; i++)
+                str.push(pw.testMask(i, j, 1) ? "#" : " ");
+            str.push("\n");
         }
-        console.log(res.join(""));
+        console.log(str.join(""));
+    };
+    
+    this.toPassageWallRepresentation = () => {
+        let pw = new ByteArray(this.ar.getWidth() * 2 + 1, this.ar.getHeight() * 2 + 1);
+        let cx = 0, cy = 0;
+        let pushTile = (val) => pw.set(cx++, cy, val);
+        let nextLine = () => {cx = 0; cy++;};
+        let w = this.ar.getWidth(), h = this.ar.getHeight();
+        for (let i = 0; i < w; i++) {
+            pushTile(1);
+            pushTile(1);
+        }
+        pushTile(1);
+        nextLine();
+        for (let j = 0; j < h; j++) {
+            pushTile(1);
+            for (let i = 0; i < w; i++) {
+                pushTile(0);
+                if (this.ar.testMask(i, j, RIGHT.mask))
+                    pushTile(0);
+                else
+                    pushTile(1);
+            }
+            nextLine();
+            pushTile(1);
+            for (let i = 0; i < w; i++) {
+                if (this.ar.testMask(i, j, DOWN.mask))
+                    pushTile(0);
+                else
+                    pushTile(1);
+                pushTile(1);
+            }
+            nextLine();
+        }
+        return pw;
     };
 }
 
@@ -97,16 +105,16 @@ function shuffledDirections() {
     var dirs = [...directions];
     var res = [];
     while (dirs.length > 0)
-        res.push(dirs.splice(Math.floor(Math.random() * dirs.length), 1)[0]);
+        res.push(dirs.splice(randInt(dirs.length), 1)[0]);
     return res;
 }
 
-function Generator() {
+function DFSGenerator() {
     function Location(pos, from) {
         this.pos = pos;
         this.from = from;
     }
-    this.generateDFS = (w, h) => {
+    this.generate = (w, h) => {
         var maze = new Maze(w, h);
         var stack = new Array();
         stack.push(new Location(new Pos(0, 0), null));
@@ -117,10 +125,10 @@ function Generator() {
             let y = loc.pos.y;
             let from = loc.from;
 
-            if (maze.testMask(x, y, VISITED_MASK))
+            if (maze.isVisited(x, y))
                 continue;
 
-            maze.addMask(x, y, VISITED_MASK);
+            maze.visit(x, y);
 
             if (from !== null)
                 maze.makePass(x, y, from);
@@ -130,7 +138,7 @@ function Generator() {
             dirs.forEach(dir => {                
                 let nx = x + dir.dx;
                 let ny = y + dir.dy;
-                if ((!maze.checkRange(nx, ny)) || maze.testMask(nx, ny, VISITED_MASK))
+                if (!maze.isInside(nx, ny) || maze.isVisited(nx, ny))
                     return;
                 stack.push(new Location(new Pos(nx, ny), dir.opposite));
             });
@@ -138,4 +146,3 @@ function Generator() {
         return maze;
     };
 }
-
