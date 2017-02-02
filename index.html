@@ -5,18 +5,21 @@
         <script src="bytearray.js"></script>
         <script src="color.js"></script>
         <script src="mazegen.js"></script>
+        <script src="renderer.js"></script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" href="">
     </head>
     <body>
+        <canvas id="can" width=1000 height=700 style="width: 1000px; height: 700px;"></canvas>
         <script>
             var gen = new DFSGenerator();
             var cr = new ColorRandomizer(100);
             cr.randomize(new Color(1, 2, 3));
-            var maze = gen.generate(40, 10);
+            var maze = gen.generate(30, 20);
             maze.printToConsole();
+            new SimpleRenderer(new Color(130, 130, 220), new Color(220, 220, 254), 5, 20).render(
+                    document.getElementById("can").getContext("2d"), maze);
         </script>
-        <div>TODO write content</div>
     </body>
 </html>
