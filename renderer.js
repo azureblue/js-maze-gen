@@ -1,5 +1,11 @@
 function SimpleRenderer(wCol, pCol, wSize, pSize) {
-    
+    this.getBounds = (maze) => {
+        let pw = maze.toPassageWallRepresentation();
+        return {
+            w: (pw.getWidth() >> 1) * (pSize + wSize) + wSize,
+            h: (pw.getHeight() >> 1) * (pSize + wSize) + wSize
+        }
+    }
     this.render = (ctx, maze) => {
         let pw = maze.toPassageWallRepresentation();
         let w = pw.getWidth(), h = pw.getHeight();

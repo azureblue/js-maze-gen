@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>TODO supply a title</title>
+        <title>maze gen</title>
         <script src="utils.js"></script>
         <script src="bytearray.js"></script>
         <script src="color.js"></script>
@@ -9,17 +9,62 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" href="">
+        <style>
+            label {font-family: monospace; white-space: nowrap;}
+            input {margin-left: auto; width: 50px; font-family: monospace; font-size: medium;}
+            input[type=button] {width: auto;}
+            p {margin: 5px;}
+        </style>
     </head>
     <body>
-        <canvas id="can" width=1000 height=700 style="width: 1000px; height: 700px;"></canvas>
+        <div style="float: left; margin: 5px; ">
+            <p>
+                <label>width: <input id="iw" type="number" value="10"></label>
+            </p>
+            <p>
+                <label>height: </label><input id="ih" type="number" value="10">
+            </p>
+            <p>
+                <label>wall color: <input id="iwc" type="color" value="#8282C2"></label>
+            </p>
+            <p>
+                <label>passage color: <input id="ipc" type="color" value="#C2C2FE"></label>
+            </p>
+            <p>
+                <label>wall width: <input id="iws" type="number" value="5"></label>
+            </p>
+            <p>
+                <label>passage width: <input id="ips" type="number" value="20"></label>
+            </p>
+            <p>
+                <input type="button" value="Generate" onclick="generate()"> 
+            </p>
+        </div>
+        <canvas id="can" style="position: absolute;"></canvas>
+        
         <script>
-            var gen = new DFSGenerator();
-            var cr = new ColorRandomizer(100);
-            cr.randomize(new Color(1, 2, 3));
-            var maze = gen.generate(30, 20);
-            maze.printToConsole();
-            new SimpleRenderer(new Color(130, 130, 220), new Color(220, 220, 254), 5, 20).render(
-                    document.getElementById("can").getContext("2d"), maze);
+            let getII = (id) => Number.parseInt(document.getElementById(id).value);            
+            let getICol = (id) => Color.fromStyle(document.getElementById(id).value);
+            
+            function resizeCanvas(w, h) {
+                let can = document.getElementById("can");
+                can.width = w;
+                can.height = h;
+                can.style.width = w;
+                can.style.height = h;
+            }
+            
+            function generate() {
+                var gen = new DFSGenerator();
+                var maze = gen.generate(getII("iw"), getII("ih"));
+                //maze.printToConsole();
+                let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getII("iws"), getII("ips"));
+                let bounds = renderer.getBounds(maze);
+                resizeCanvas(bounds.w, bounds.h);
+                renderer.render(
+                        document.getElementById("can").getContext("2d"), maze);
+            }
+
         </script>
     </body>
 </html>
