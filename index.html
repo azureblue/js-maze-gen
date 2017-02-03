@@ -31,6 +31,9 @@
                 <label>passage color: <input id="ipc" type="color" value="#c9d7f8"></label>
             </p>
             <p>
+                <label>path color: <input id="isc" type="color" value="#cee5fe"></label>
+            </p>
+            <p>
                 <label>wall width: <input id="iws" type="number" value="3"></label>
             </p>
             <p>
@@ -48,10 +51,14 @@
             <p>
                 <input type="button" value="Generate" onclick="generate()"> 
             </p>
+            <p>
+                <input type="button" value="Solve" onclick="solve()"> 
+            </p>
         </div>
         <canvas id="can" style="position: absolute;"></canvas>
         
         <script>
+            var ma;
             let getII = (id) => Number.parseInt(document.getElementById(id).value);
             let getIS = (id) => document.getElementById(id).value;      
             let getICol = (id) => Color.fromStyle(document.getElementById(id).value);
@@ -69,12 +76,22 @@
                 var maze = gen.generate(getII("iw"), getII("ih"));
                 var wl = new WallRemover();
                 wl.removeWalls(maze, getII("irw"));
-                //maze.printToConsole();
-                let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getII("iws"), getII("ips"));
-                let bounds = renderer.getBounds(maze);
+                ma = maze;
+                draw();
+            }
+            
+            function draw() {
+                let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getICol("isc"), getII("iws"), getII("ips"));
+                let bounds = renderer.getBounds(ma);
                 resizeCanvas(bounds.w, bounds.h);
                 renderer.render(
-                        document.getElementById("can").getContext("2d"), maze);
+                        document.getElementById("can").getContext("2d"), ma);
+            }
+            
+            function solve() {
+                var solver = new Solver(new Pos(0, 0), new Pos(getII("iw") - 1, getII("ih") - 1));
+                solver.solve(ma);
+                draw();
             }
 
         </script>

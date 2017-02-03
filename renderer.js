@@ -1,4 +1,4 @@
-function SimpleRenderer(wCol, pCol, wSize, pSize) {
+function SimpleRenderer(wCol, pCol, sCol, wSize, pSize) {
     this.getBounds = (maze) => {
         let pw = maze.toPassageWallRepresentation();
         return {
@@ -18,6 +18,7 @@ function SimpleRenderer(wCol, pCol, wSize, pSize) {
                 let px = (i & 1) ? wSize : 0;
                 let py = (j & 1) ? wSize : 0;
                 let col = pw.testMask(i, j, 1) ? wCol : pCol;
+                col = pw.testMask(i, j, PATH_MASK) ? sCol : col;
                 ctx.fillStyle = col.toFillStyle();
                 ctx.fillRect((i >> 1) * cs + px, (j >> 1) * cs + py, cw, ch);
             }
