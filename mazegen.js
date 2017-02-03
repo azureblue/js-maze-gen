@@ -146,3 +146,74 @@ function DFSGenerator() {
         return maze;
     };
 }
+
+function MSTGenerator() {
+    function Location(pos, from) {
+        this.pos = pos;
+        this.from = from;
+    }
+    this.generate = (w, h) => {
+        var maze = new Maze(w, h);
+        var queue = new Array();
+        queue.push(new Location(new Pos(0, 0), null));
+
+        while (queue.length > 0) {
+            let idx = randInt(queue.length);
+            let temp = queue[idx];
+            queue[idx] = queue[queue.length - 1];
+            queue[queue.length - 1] = temp;
+            
+            let loc = queue.pop();
+            let x = loc.pos.x;
+            let y = loc.pos.y;
+            let from = loc.from;
+
+            if (maze.isVisited(x, y))
+                continue;
+
+            maze.visit(x, y);
+
+            if (from !== null)
+                maze.makePass(x, y, from);
+
+            var dirs = shuffledDirections();
+            
+            dirs.forEach(dir => {                
+                let nx = x + dir.dx;
+                let ny = y + dir.dy;
+                if (!maze.isInside(nx, ny) || maze.isVisited(nx, ny))
+                    return;
+                queue.push(new Location(new Pos(nx, ny), dir.opposite));
+            });
+        }
+        return maze;
+    };
+}
+
+function WallRemover() {
+    
+    this.removeWalls = (maze, n) => {
+        let w = maze.ar.getWidth(), h = maze.ar.getHeight();
+        let mt = 100000;
+        for (let i = 0; i < n; i++) {
+            let x = randInt(w);
+            let y = randInt(h);
+            let dir = directions[randInt(directions.length)];
+            let nx = x + dir.dx;
+            let ny = y + dir.dy;
+            if (!maze.isInside(nx, ny)) {
+                i--;
+                continue;
+            }
+            if (maze.ar.testMask(x, y, dir.mask)) {
+                if (mt > 0) {
+                    mt--;
+                    i--;
+                    continue;
+                }
+                continue;
+            }
+            maze.makePass(x, y, dir);
+        }
+    };
+}

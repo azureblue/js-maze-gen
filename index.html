@@ -25,16 +25,25 @@
                 <label>height: </label><input id="ih" type="number" value="10">
             </p>
             <p>
-                <label>wall color: <input id="iwc" type="color" value="#8282C2"></label>
+                <label>wall color: <input id="iwc" type="color" value="#789bcb"></label>
             </p>
             <p>
-                <label>passage color: <input id="ipc" type="color" value="#C2C2FE"></label>
+                <label>passage color: <input id="ipc" type="color" value="#c9d7f8"></label>
             </p>
             <p>
-                <label>wall width: <input id="iws" type="number" value="5"></label>
+                <label>wall width: <input id="iws" type="number" value="3"></label>
             </p>
             <p>
                 <label>passage width: <input id="ips" type="number" value="20"></label>
+            </p>
+            <p>
+                    <label>method: <select id="im">
+                            <option value="DFSGenerator">DFS</option>
+                            <option value="MSTGenerator">MST</option>
+                    </select> </label>
+            </p>
+            <p>
+                <label>remove walls: <input id="irw" type="number" value="0"></label>
             </p>
             <p>
                 <input type="button" value="Generate" onclick="generate()"> 
@@ -43,7 +52,8 @@
         <canvas id="can" style="position: absolute;"></canvas>
         
         <script>
-            let getII = (id) => Number.parseInt(document.getElementById(id).value);            
+            let getII = (id) => Number.parseInt(document.getElementById(id).value);
+            let getIS = (id) => document.getElementById(id).value;      
             let getICol = (id) => Color.fromStyle(document.getElementById(id).value);
             
             function resizeCanvas(w, h) {
@@ -55,8 +65,10 @@
             }
             
             function generate() {
-                var gen = new DFSGenerator();
+                var gen = new window[getIS("im")]();
                 var maze = gen.generate(getII("iw"), getII("ih"));
+                var wl = new WallRemover();
+                wl.removeWalls(maze, getII("irw"));
                 //maze.printToConsole();
                 let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getII("iws"), getII("ips"));
                 let bounds = renderer.getBounds(maze);
