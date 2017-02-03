@@ -15,6 +15,15 @@ function Maze(w, h) {
         this.ar.addMask(x, y, direction.mask);
         this.ar.addMask(toX, toY, direction.opposite.mask);
     };
+    
+    this.makeWall = (x, y, direction) => {
+        var toX = x + direction.dx;
+        var toY = y + direction.dy;
+        assertRange(x, y);
+        assertRange(toX, toY);
+        this.ar.subtractMask(x, y, direction.mask);
+        this.ar.subtractMask(toX, toY, direction.opposite.mask);
+    };
 
     this.isVisited = (x, y) => this.ar.testMask(x, y, VISITED_MASK);
     this.visit = (x, y) => this.ar.addMask(x, y, VISITED_MASK);
@@ -113,7 +122,7 @@ function DFSGenerator() {
                 maze.makePass(x, y, from);
 
             var dirs = shuffledDirections();
-
+            
             dirs.forEach(dir => {
                 let nx = x + dir.dx;
                 let ny = y + dir.dy;
@@ -131,7 +140,7 @@ function MSTGenerator() {
     this.generate = (w, h) => {
         var maze = new Maze(w, h);
         var queue = new Array();
-        queue.push(new Location(new Pos(0, 0), null));
+        queue.push(new Location(new Pos(randInt(w), randInt(h)), null));
 
         while (queue.length > 0) {
             let idx = randInt(queue.length);
@@ -162,6 +171,49 @@ function MSTGenerator() {
                 queue.push(new Location(new Pos(nx, ny), dir.opposite));
             });
         }
+        return maze;
+    };
+}
+
+function RSGenerator() {
+
+    this.generate = (w, h) => {
+        var maze = new Maze(w, h);
+        for (let i = 0; i < w; i++)
+            for (let j = 0; j < h; j++) {
+                if (i < w - 1) maze.makePass(i, j, RIGHT);
+                if (j < h - 1) maze.makePass(i, j, DOWN);
+            }
+        
+        function subdivide(x, y, w, h) {
+            if (w > h) {
+                if (w < 2)
+                    return;
+                let passY = randInt(h);
+                let wallX = w >> 1;
+                for (let i = 0; i < h; i++) {
+                    if (i === passY)
+                        continue;
+                    maze.makeWall(x + wallX, y + i, LEFT);
+                }
+                subdivide(x, y, wallX, h);
+                subdivide(x + wallX, y, w - wallX, h);
+            } else {
+                if (h < 2)
+                    return;
+                let passX = randInt(w);
+                let wallY = h >> 1;
+                for (let i = 0; i < w; i++) {
+                    if (i === passX)
+                        continue;
+                    maze.makeWall(x + i, y + wallY, UP);
+                }
+                subdivide(x, y, w, wallY);
+                subdivide(x, y + wallY, w, h - wallY);
+            }
+        }
+        
+        subdivide(0, 0, w, h);
         return maze;
     };
 }
