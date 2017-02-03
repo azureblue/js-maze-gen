@@ -37,4 +37,3 @@ Object.freeze(directions);
 
 const VISITED_MASK = 1 << 5;
 const PATH_MASK = 1 << 6;
-
