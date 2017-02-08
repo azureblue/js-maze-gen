@@ -1,4 +1,9 @@
 function SimpleRenderer(wCol, pCol, sCol, wSize, pSize) {
+    const cs = wSize + pSize;
+    var tileRect = (pos) => {
+        return new Rect(wSize + (pos.x * cs), wSize + (pos.y * cs), pSize, pSize);
+    };
+    
     this.getBounds = (maze) => {
         let pw = maze.toPassageWallRepresentation();
         return {
@@ -7,10 +12,27 @@ function SimpleRenderer(wCol, pCol, sCol, wSize, pSize) {
         };
     };
 
+    this.renderPath = (ctx, path) => {
+        if (path.length === 0)
+            return;
+        
+        ctx.fillStyle = sCol.toFillStyle();
+        let start = tileRect(path[0]);
+        ctx.fillRect(start.x, start.y, start.w, start.h);
+        for (let i = 1; i < path.length; i++) {
+            let current = tileRect(path[i]);
+            let minX = Math.min(start.x, current.x);
+            let minY = Math.min(start.y, current.y);
+            ctx.fillRect(minX, minY,
+                Math.max(start.x + start.w, current.x + current.w) - minX,
+                Math.max(start.y + start.h, current.y + current.h) - minY);
+            start = current;
+        }
+    };
     this.render = (ctx, maze) => {
         let pw = maze.toPassageWallRepresentation();
         let w = pw.getWidth(), h = pw.getHeight();
-        let cs = wSize + pSize;
+
         for (let j = 0; j < h; j++)
             for (let i = 0; i < w; i++) {
                 let cw = (i & 1) ? pSize : wSize;
@@ -18,7 +40,6 @@ function SimpleRenderer(wCol, pCol, sCol, wSize, pSize) {
                 let px = (i & 1) ? wSize : 0;
                 let py = (j & 1) ? wSize : 0;
                 let col = pw.testMask(i, j, 1) ? wCol : pCol;
-                col = pw.testMask(i, j, PATH_MASK) ? sCol : col;
                 ctx.fillStyle = col.toFillStyle();
                 ctx.fillRect((i >> 1) * cs + px, (j >> 1) * cs + py, cw, ch);
             }
@@ -26,8 +47,8 @@ function SimpleRenderer(wCol, pCol, sCol, wSize, pSize) {
         ctx.fillRect(wSize, 0, pSize, wSize);
         ctx.fillRect(((w - 2) >> 1) * cs + wSize, ((h - 1) >> 1) * cs, pSize, wSize);
 
-        for (let j = 2; j < h; j += 2)
-            for (let i = 2; i < w; i += 2) {
+        for (let j = 2; j < h - 1; j += 2)
+            for (let i = 2; i < w - 1; i += 2) {
                 let flag = false;
                 for (let k = -1; k < 2; k++)
                     for (let l = -1; l < 2; l++) {

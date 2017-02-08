@@ -1,29 +1,22 @@
 function Maze(w, h) {
-    this.ar = new ByteArray(w, h);
-    function assertRange(x, y) {
-        if (!this.ar.checkRange(x, y))
-            throw "Invalid range " + x + " " + y + ".";
-    }
+    var ar = new ByteArray(w, h);
 
-    assertRange = assertRange.bind(this);
-
-    this.makePass = (x, y, direction) => {
-        var toX = x + direction.dx;
-        var toY = y + direction.dy;
-        assertRange(x, y);
-        assertRange(toX, toY);
-        this.ar.addMask(x, y, direction.mask);
-        this.ar.addMask(toX, toY, direction.opposite.mask);
+    this.makePass = (pos, direction) => {
+        var to = direction.step(pos);
+        ar.addMask(pos.x, pos.y, direction.mask);
+        ar.addMask(to.x, to.y, direction.opposite.mask);
     };
     
-    this.makeWall = (x, y, direction) => {
-        var toX = x + direction.dx;
-        var toY = y + direction.dy;
-        assertRange(x, y);
-        assertRange(toX, toY);
-        this.ar.subtractMask(x, y, direction.mask);
-        this.ar.subtractMask(toX, toY, direction.opposite.mask);
+    this.makeWall = (pos, direction) => {
+        var to = direction.step(pos);
+        ar.subtractMask(pos.x, pos.y, direction.mask);
+        ar.subtractMask(to.x, to.y, direction.opposite.mask);
     };
+    
+    this.getWidth = () => ar.getWidth();
+    this.getHeight = () => ar.getHeight();
+    
+    this.hasPass = (pos, direction) => ar.testMask(pos.x, pos.y, direction.mask);
 
     this.isVisited = (x, y) => this.ar.testMask(x, y, VISITED_MASK);
     this.visit = (x, y) => this.ar.addMask(x, y, VISITED_MASK);
@@ -42,14 +35,14 @@ function Maze(w, h) {
     };
 
     this.toPassageWallRepresentation = () => {
-        let pw = new ByteArray(this.ar.getWidth() * 2 + 1, this.ar.getHeight() * 2 + 1);
+        let pw = new ByteArray(ar.getWidth() * 2 + 1, ar.getHeight() * 2 + 1);
         let cx = 0, cy = 0;
         let pushTile = (val) => pw.set(cx++, cy, val);
         let nextLine = () => {
             cx = 0;
             cy++;
         };
-        let w = this.ar.getWidth(), h = this.ar.getHeight();
+        let w = ar.getWidth(), h = ar.getHeight();
         for (let i = 0; i < w; i++) {
             pushTile(1);
             pushTile(1);
@@ -59,8 +52,8 @@ function Maze(w, h) {
         for (let j = 0; j < h; j++) {
             pushTile(1);
             for (let i = 0; i < w; i++) {
-                pushTile(this.ar.get(i, j) & PATH_MASK);
-                if (this.ar.testMask(i, j, RIGHT.mask))
+                pushTile(0);
+                if (ar.testMask(i, j, Direction.RIGHT.mask))
                     pushTile(0);
                 else
                     pushTile(1);
@@ -68,7 +61,7 @@ function Maze(w, h) {
             nextLine();
             pushTile(1);
             for (let i = 0; i < w; i++) {
-                if (this.ar.testMask(i, j, DOWN.mask))
+                if (ar.testMask(i, j, Direction.DOWN.mask))
                     pushTile(0);
                 else
                     pushTile(1);
@@ -80,13 +73,27 @@ function Maze(w, h) {
     };
 }
 
-function Pos(x, y) {
-    this.x = x;
-    this.y = y;
-    this.toStringKey = () => "pos:" + this.x + ":" + this.y;
-    this.samePos = (pos) => pos.x === this.x && pos.y === this.y;
-    Object.freeze(this);
+function Direction(dx, dy, mask) {
+    this.dx = dx;
+    this.dy = dy;
+    this.mask = mask;
+    this.opposite;
 }
+
+Direction.prototype.step = function(pos) { return new Pos(pos.x + this.dx, pos.y + this.dy); };
+
+Direction.UP = new Direction(0, -1, 1);
+Direction.RIGHT = new Direction(1, 0, 1 << 1);
+Direction.DOWN = new Direction(0, 1, 1 << 2);
+Direction.LEFT = new Direction(-1, 0, 1 << 3);
+
+Direction.UP.opposite = Direction.DOWN;
+Direction.DOWN.opposite = Direction.UP;
+Direction.RIGHT.opposite = Direction.LEFT;
+Direction.LEFT.opposite = Direction.RIGHT;
+
+Direction.directions = [Direction.UP, Direction.RIGHT, Direction.DOWN, Direction.LEFT];
+[...Direction.directions, Direction.directions, Direction].forEach(ob => Object.freeze(ob));
 
 function Location(pos, from) {
     this.pos = pos;
@@ -94,7 +101,7 @@ function Location(pos, from) {
 }
 
 function shuffledDirections() {
-    var dirs = [...directions];
+    var dirs = [...Direction.directions];
     var res = [];
     while (dirs.length > 0)
         res.push(dirs.splice(randInt(dirs.length), 1)[0]);
@@ -136,18 +143,12 @@ function DFSGenerator() {
 }
 
 function MSTGenerator() {
-
-    this.generate = (w, h) => {
-        var maze = new Maze(w, h);
+    this.generate = (maze, rect) => {
         var queue = new Array();
         queue.push(new Location(new Pos(randInt(w), randInt(h)), null));
 
         while (queue.length > 0) {
-            let idx = randInt(queue.length);
-            let temp = queue[idx];
-            queue[idx] = queue[queue.length - 1];
-            queue[queue.length - 1] = temp;
-
+            moveToEnd(randInt(queue.length));
             let loc = queue.pop();
             let x = loc.pos.x;
             let y = loc.pos.y;
@@ -176,16 +177,16 @@ function MSTGenerator() {
 }
 
 function RSGenerator() {
-
-    this.generate = (w, h) => {
-        var maze = new Maze(w, h);
-        for (let i = 0; i < w; i++)
-            for (let j = 0; j < h; j++) {
-                if (i < w - 1) maze.makePass(i, j, RIGHT);
-                if (j < h - 1) maze.makePass(i, j, DOWN);
+    this.generate = (maze, rect) => {
+        for (let i = 0; i < rect.w; i++)
+            for (let j = 0; j < rect.h; j++) {
+                if (i < rect.w - 1) maze.makePass(new Pos(i + rect.x, j + rect.y), Direction.RIGHT);
+                if (j < rect.h - 1) maze.makePass(new Pos(i + rect.x, j + rect.y), Direction.DOWN);
             }
-        
-        function subdivide(x, y, w, h) {
+        subdivide(maze, rect.x, rect.y, rect.w, rect.h);
+    };
+    
+    function subdivide(maze, x, y, w, h) {
             if (w > h) {
                 if (w < 2)
                     return;
@@ -194,10 +195,10 @@ function RSGenerator() {
                 for (let i = 0; i < h; i++) {
                     if (i === passY)
                         continue;
-                    maze.makeWall(x + wallX, y + i, LEFT);
+                    maze.makeWall(new Pos(x + wallX, y + i), Direction.LEFT);
                 }
-                subdivide(x, y, wallX, h);
-                subdivide(x + wallX, y, w - wallX, h);
+                subdivide(maze, x, y, wallX, h);
+                subdivide(maze, x + wallX, y, w - wallX, h);
             } else {
                 if (h < 2)
                     return;
@@ -206,34 +207,27 @@ function RSGenerator() {
                 for (let i = 0; i < w; i++) {
                     if (i === passX)
                         continue;
-                    maze.makeWall(x + i, y + wallY, UP);
+                    maze.makeWall(new Pos(x + i, y + wallY), Direction.UP);
                 }
-                subdivide(x, y, w, wallY);
-                subdivide(x, y + wallY, w, h - wallY);
+                subdivide(maze, x, y, w, wallY);
+                subdivide(maze, x, y + wallY, w, h - wallY);
             }
         }
-        
-        subdivide(0, 0, w, h);
-        return maze;
-    };
 }
 
 function WallRemover() {
-
     this.removeWalls = (maze, n) => {
-        let w = maze.ar.getWidth(), h = maze.ar.getHeight();
+        let mRect = new Rect(0, 0, maze.getWidth(), maze.getHeight());
         let mt = 100000;
         for (let i = 0; i < n; i++) {
-            let x = randInt(w);
-            let y = randInt(h);
-            let dir = directions[randInt(directions.length)];
-            let nx = x + dir.dx;
-            let ny = y + dir.dy;
-            if (!maze.isInside(nx, ny)) {
+            let pos = new Pos(randInt(mRect.w), randInt(mRect.h));
+            let dir = Direction.directions[randInt(Direction.directions.length)];
+            let nPos = dir.step(pos);
+            if (!mRect.inside(nPos)) {
                 i--;
                 continue;
             }
-            if (maze.ar.testMask(x, y, dir.mask)) {
+            if (maze.hasPass(pos, dir)) {
                 if (mt > 0) {
                     mt--;
                     i--;
@@ -241,51 +235,40 @@ function WallRemover() {
                 }
                 continue;
             }
-            maze.makePass(x, y, dir);
+            maze.makePass(pos, dir);
         }
     };
 }
 
 function Solver(start, end) {
     this.solve = (maze) => {
-        let w = maze.ar.getWidth(), h = maze.ar.getHeight();
+        let rect = new Rect(0, 0, maze.getWidth(), maze.getHeight());
         let parents = new Map();
-
-        for (let i = 0; i < w; i++)
-            for (let j = 0; j < h; j++) {
-                maze.ar.subtractMask(i, j, PATH_MASK);
-                maze.ar.subtractMask(i, j, VISITED_MASK);
-            }
+        
+        var visited = new VisitArray(rect);
 
         var queue = new Array();
-        queue.push(new Location(start, null));
+        queue.push(start);
 
         while (queue.length > 0) {
-            let loc = queue.shift();
-            let x = loc.pos.x;
-            let y = loc.pos.y;
-            let from = loc.from;
-            if (loc.pos.samePos(end)) {
+            let pos = queue.shift();
+            if (pos.samePos(end)) {
                 let path = [];
                 let cp = end;
-                while (!cp.samePos(start)) {
-                    maze.ar.addMask(cp.x, cp.y, PATH_MASK);
+                while (!cp.samePos(start)) {                    
                     path.push(cp);
                     cp = parents.get(cp.toStringKey());
                 }
-                path.push(start);
-                maze.ar.addMask(start.x, start.y, PATH_MASK);
+                path.push(start);                
                 return path.reverse();
             }
-            directions.forEach(dir => {
-                let nx = x + dir.dx;
-                let ny = y + dir.dy;
-                if (!maze.isInside(nx, ny) || maze.isVisited(nx, ny) || !maze.ar.testMask(x, y, dir.mask))
+            Direction.directions.forEach(dir => {
+                let nPos = dir.step(pos);
+                if (!rect.inside(nPos) || visited.isVisited(nPos) || !maze.hasPass(pos, dir))
                     return;
-                let npos = new Pos(nx, ny);
-                parents.set(npos.toStringKey(), loc.pos);
-                maze.visit(nx, ny);
-                queue.push(new Location(new Pos(nx, ny), dir.opposite));
+                parents.set(nPos.toStringKey(), pos);
+                visited.visit(nPos);
+                queue.push(nPos);
             });
         }
         return [];
