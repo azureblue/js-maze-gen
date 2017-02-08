@@ -1,6 +1,7 @@
 <html>
     <head>
         <title>maze gen</title>
+        <script src="geom.js"></script>
         <script src="utils.js"></script>
         <script src="bytearray.js"></script>
         <script src="color.js"></script>
@@ -37,7 +38,7 @@
         <canvas id="can" style="position: absolute;"></canvas>
         
         <script>
-            var ma;
+            var maze;
             let getII = (id) => Number.parseInt(document.getElementById(id).value);
             let getIS = (id) => document.getElementById(id).value;      
             let getICol = (id) => Color.fromStyle(document.getElementById(id).value);
@@ -51,20 +52,20 @@
             }
             
             function generate() {
+                maze = new Maze(getII("iw"), getII("ih"));
                 var gen = new window[getIS("im")]();
-                var maze = gen.generate(getII("iw"), getII("ih"));
+                gen.generate(maze, new Rect(0, 0, getII("iw"), getII("ih")));
                 var wl = new WallRemover();
                 wl.removeWalls(maze, getII("irw"));
-                ma = maze;
+               
                 draw();
             }
             
             function draw() {
                 let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getICol("isc"), getII("iws"), getII("ips"));
-                let bounds = renderer.getBounds(ma);
+                let bounds = renderer.getBounds(maze);
                 resizeCanvas(bounds.w, bounds.h);
-                renderer.render(
-                        document.getElementById("can").getContext("2d"), ma);
+                renderer.render(document.getElementById("can").getContext("2d"), maze);
             }
             
             function solve() {
