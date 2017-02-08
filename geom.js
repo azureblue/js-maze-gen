@@ -23,31 +23,3 @@ Rect.prototype.insideXY = function(x, y) {
 };
 
 Rect.prototype.toStringKey = function() { return "rect:" + this.x + ":" + this.y + ":" + this.w + ":" + this.h; };
-
-
-function Direction(dx, dy, mask) {
-    this.dx = dx;
-    this.dy = dy;
-    this.mask = mask;
-    this.opposite;
-}
-
-Direction.prototype.step = function(pos) { return new Pos(pos.x + this.dx, pos.y + this.dy); };
-
-const UP = new Direction(0, -1, 1);
-const RIGHT = new Direction(1, 0, 1 << 1);
-const DOWN = new Direction(0, 1, 1 << 4);
-const LEFT = new Direction(-1, 0, 1 << 3);
-
-UP.opposite = DOWN;
-DOWN.opposite = UP;
-RIGHT.opposite = LEFT;
-LEFT.opposite = RIGHT;
-
-Object.freeze(UP);
-Object.freeze(DOWN);
-Object.freeze(LEFT);
-Object.freeze(RIGHT);
-
-var directions = [UP, RIGHT, DOWN, LEFT];
-Object.freeze(directions);

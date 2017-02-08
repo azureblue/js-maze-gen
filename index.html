@@ -39,10 +39,7 @@
         
         <script>
             var maze;
-            let getII = (id) => Number.parseInt(document.getElementById(id).value);
-            let getIS = (id) => document.getElementById(id).value;      
-            let getICol = (id) => Color.fromStyle(document.getElementById(id).value);
-            
+
             function resizeCanvas(w, h) {
                 let can = document.getElementById("can");
                 can.width = w;
@@ -61,17 +58,20 @@
                 draw();
             }
             
-            function draw() {
+            function draw(path) {
                 let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getICol("isc"), getII("iws"), getII("ips"));
                 let bounds = renderer.getBounds(maze);
                 resizeCanvas(bounds.w, bounds.h);
                 renderer.render(document.getElementById("can").getContext("2d"), maze);
+                if (path)
+                    renderer.renderPath(document.getElementById("can").getContext("2d"), path);
             }
             
             function solve() {
                 var solver = new Solver(new Pos(0, 0), new Pos(getII("iw") - 1, getII("ih") - 1));
-                solver.solve(ma);
-                draw();
+
+                let path = solver.solve(maze);
+                draw(path);
             }
 
         </script>

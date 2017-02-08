@@ -2,7 +2,7 @@ function Color(r, g, b) {
     this.r = r;
     this.g = g;
     this.b = b;
-    this.toFillStyle = () => "rgb(" + r + ", " + g + ", " + b + ")";    
+    this.toFillStyle = () => "rgb(" + this.r + ", " + this.g + ", " + this.b + ")";    
 }
 
 Color.fromStyle = (col) => {
