@@ -2,43 +2,64 @@
     <head>
         <title>maze gen</title>
         <script src="utils.js"></script>
+        <script src="geom.js"></script>
         <script src="bytearray.js"></script>
         <script src="color.js"></script>
         <script src="mazegen.js"></script>
+        <script src="generator/dfs.js"></script>
+        <script src="generator/mst.js"></script>
+        <script src="generator/rs.js"></script>
         <script src="renderer.js"></script>
+        <script src="setting.js"></script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" href="">
         <style>
-            label {font-family: monospace; white-space: nowrap; display: block; text-align: right;}
             input {margin-left: auto; width: 50px; font-family: monospace; font-size: medium;}
             input[type=button] {width: auto;}
+            .setting_label {font-family: monospace; margin: 5px; display: inline-block; text-align: right;}
+            .setting_wrapper {text-align: right;}
+            .bold {font-weight: bold;}
             p {margin: 5px;}
         </style>
     </head>
     <body>
         <div style="float: left; margin: 5px;">
-                <label>width: <input id="iw" type="number" value="10"></label>
-                <label>height: <input id="ih" type="number" value="10"></label>
-                <label>wall color: <input id="iwc" type="color" value="#789bcb"></label>
-                <label>passage color: <input id="ipc" type="color" value="#c9d7f8"></label>
-                <label>path color: <input id="isc" type="color" value="#cee5fe"></label>
-                <label>wall width: <input id="iws" type="number" value="3"></label>
-                <label>passage width: <input id="ips" type="number" value="20"></label>
-                    <label>method: <select id="im">
-                            <option value="DFSGenerator">Depth-First Search</option>
-                            <option value="MSTGenerator">MST</option>
-                            <option value="RSGenerator">Recur. Subdivision</option>
-                    </select> </label>
-                <label>remove walls: <input id="irw" type="number" value="0"></label>
-                <input type="button" value="Generate" onclick="generate()"> 
-                <input type="button" value="Solve" onclick="solve()"> 
+            <div id="basic_settings"></div>
+            <input type="button" value="Generate" onclick="generate()"> 
+            <input type="button" value="Solve" onclick="solve()"> 
+            <div id="gen_settings"></div>
         </div>
         <canvas id="can" style="position: absolute;"></canvas>
-        
+
         <script>
             var maze;
+            var settings = {
+                width: new InputSetting("width:", {type: "number", value: 10}, Number.parseInt),
+                height: new InputSetting("height:", {type: "number", value: 10}, Number.parseInt),
+                wallWidth: new InputSetting("wall width:", {type: "number", value: 3}, Number.parseInt),
+                passageWidth: new InputSetting("passage width:", {type: "number", value: 20}, Number.parseInt),
+                wallColor: new InputSetting("wall color:", {type: "color", value: "#789bcb"}, Color.fromStyle),
+                passageColor: new InputSetting("passage color:", {type: "color", value: "#c9d7f8"}, Color.fromStyle),
+                pathColor: new InputSetting("path color:", {type: "color", value: "#cee5fe"}, Color.fromStyle),
+                wallRemove: new InputSetting("remove walls:", {type: "number", value: 0}, Number.parseInt),
 
+                generator: new SelectSetting("method:", {
+                    DFSGenerator: "DFS",
+                    MSTGenerator: "MST",
+                    RSGenerator: "RS"
+                }, {}, x => new window[x]())
+            };
+            
+            settings.generator.getSettingElement().className += " bold";
+
+            [settings.width, settings.height, settings.wallWidth, settings.passageWidth, settings.wallColor,
+                settings.passageColor, settings.pathColor, settings.generator]
+                    .forEach(se => elemById("basic_settings").appendChild(se.getSettingElement()));
+            
+            [settings.wallRemove]
+                    .forEach(se => elemById("gen_settings").appendChild(se.getSettingElement()));
+            
             function resizeCanvas(w, h) {
                 let can = document.getElementById("can");
                 can.width = w;
@@ -46,27 +67,29 @@
                 can.style.width = w;
                 can.style.height = h;
             }
-            
+
             function generate() {
-                var gen = new window[getIS("im")]();
-                var maze = gen.generate(getII("iw"), getII("ih"));
+                maze = new Maze(settings.width.get(), settings.height.get());
+                var gen = settings.generator.get();
+                gen.generate(maze, new Rect(0, 0, settings.width.get(), settings.height.get()));
                 var wl = new WallRemover();
-                wl.removeWalls(maze, getII("irw"));
-                ma = maze;
+                wl.removeWalls(maze, settings.wallRemove.get());
+
                 draw();
             }
-            
+
             function draw(path) {
-                let renderer = new SimpleRenderer(getICol("iwc"), getICol("ipc"), getICol("isc"), getII("iws"), getII("ips"));
-                let bounds = renderer.getBounds(ma);
+                let renderer = new SimpleRenderer(settings.wallColor.get(), settings.passageColor.get(),
+                        settings.pathColor.get(), settings.wallWidth.get(), settings.passageWidth.get());
+                let bounds = renderer.getBounds(maze);
                 resizeCanvas(bounds.w, bounds.h);
                 renderer.render(document.getElementById("can").getContext("2d"), maze);
                 if (path)
                     renderer.renderPath(document.getElementById("can").getContext("2d"), path);
             }
-            
+
             function solve() {
-                var solver = new Solver(new Pos(0, 0), new Pos(getII("iw") - 1, getII("ih") - 1));
+                var solver = new Solver(new Pos(0, 0), new Pos(settings.width.get() - 1, settings.height.get() - 1));
 
                 let path = solver.solve(maze);
                 draw(path);
