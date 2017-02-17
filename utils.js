@@ -11,8 +11,3 @@ function moveToEnd(array, idx) {
     array[idx] = array[array.length - 1];
     array[array.length - 1] = temp;
 }
-var getII = (id) => Number.parseInt(document.getElementById(id).value);
-
-var getIS = (id) => document.getElementById(id).value;
-
-var getICol = (id) => Color.fromStyle(document.getElementById(id).value);
